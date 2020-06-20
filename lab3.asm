@@ -2,14 +2,17 @@
 .code
 .stack 128   
 .data
+ num_of_str equ 5
+ num_of_col equ 6
  max_length equ 200
  string_i db max_length+3 dup(?)
- sorted_str dw "6514632168484689",'$'
  matrix dw 30 dup(?)
- too_big_str db " the number is too big",'$'
+ greeting_str db "Enter a matrix 5x6 to sort it's strings:",10,13,'$'
+ sorted_str db 10,13,"Sorted matrix:",10,13,'$' 
+ too_big_str db 10,13,"ERROR: one of numbers is too big",'$'
 start:
-jmp j_through  far
-buble_sort macro dw_string size 
+jmp j_over  far
+selection_sort macro dw_string size 
     local cycle1
     local cycle2
     local greater_replacing
@@ -17,7 +20,8 @@ buble_sort macro dw_string size
     push ax
     push di 
     push cx
-    lea di,sorted_str;di on the str begining
+    push bp
+    mov di,dw_string;di on the str begining
     mov cx,size
     cycle1: ;bp- max 
         mov bp,di;max on the first elem
@@ -43,6 +47,7 @@ buble_sort macro dw_string size
         inc di
         inc di
     loop cycle1
+    pop bp
     pop cx
     pop di
     pop ax
@@ -105,7 +110,7 @@ dw_input proc near   ;;beginning in di    ;;ret. dw in ax
     ja error    
     jmp input_end
     minus:
-    mov cx,7
+    mov cx,6
     cycle_minus:
         inc di
         mov dl,ds:[di]
@@ -120,11 +125,11 @@ dw_input proc near   ;;beginning in di    ;;ret. dw in ax
         imul bx;;
         cmp dx,0FFFFh 
         jne error0
-        jmp through2
+        jmp over2
         error0:
         cmp dx,0
         jne error
-        through2:
+        over2:
         pop dx
         sub ax,dx
     loop cycle_minus
@@ -133,11 +138,12 @@ dw_input proc near   ;;beginning in di    ;;ret. dw in ax
     neg ax
     cmp ax,0
     jl error
-    jmp through
+    neg ax
+    jmp over
     error:
     incorrect_num
     mov ax,0
-    through:    
+    over:    
     input_end:
     pop dx
     pop bx
@@ -151,11 +157,11 @@ dw_output proc near ;dw in dx
     mov bx,10000
     cmp dx,0
     jl minus_case
-    jmp through_0
+    jmp over_0
     minus_case:
         print_c '-'
         neg dx
-    through_0:
+    over_0:
     mov cx,5
     first_0:
         push cx
@@ -166,13 +172,13 @@ dw_output proc near ;dw in dx
         add ax,cx
         cmp ax,0
         jne !0_case
-        jmp through_1
+        jmp over_1
         !0_case:
             sub ax,cx
             inc di
             add ax,'0'
             print_c al
-        through_1:
+        over_1:
         push ax
         push dx
         xor dx,dx
@@ -184,6 +190,12 @@ dw_output proc near ;dw in dx
         pop ax    
         pop cx
     loop first_0
+    cmp di,0
+    je zero_num
+    jmp over_2
+    zero_num:
+    print_c '0'
+    over_2:
     popa
     ret
 dw_output endp    
@@ -191,34 +203,79 @@ dw_output endp
 matrix_string_input proc near ;beginning in di;amount of numb. in cx
     pusha
     numb_cycle:     ; mem. beg. in bx
-    call dw_input
-    push di
-    mov di,bx
-    mov ds:[di],ax
-    pop di    
+        call dw_input
+        push di
+        mov di,bx
+        mov ds:[di],ax
+        pop di
+        inc di
+        inc bx
+        inc bx    
     loop numb_cycle
     popa
     ret
 matrix_string_input endp   
 
-j_through:
+matrix_string_output proc near   ;amount of numb. in cx
+    pusha
+    mov di,bx                    ; mem. beg. in bx
+    numb_cycle2:
+        mov dx,ds:[di]
+        call dw_output
+        print_c ' '
+        inc di
+        inc di    
+    loop numb_cycle2
+    print_c 10
+    print_c 13
+    popa
+    ret
+matrix_string_output endp
+
+j_over:
     mov ax,@data
     mov ds,ax
-    lea dx,string_i
-    mov di,dx ;di to the begining of the string
-    mov [di],max_length ;max_length in the first byte
-    mov ah,0Ah  ;input
+    lea dx,greeting_str
+    mov ah,09h
     int 21h
-    inc di
-    inc di
-    call dw_input
-    print_c ' '
-    mov dx,ax
-    call dw_output
-    add ax,1616
-    ;lea dx,sorted_str
-    ;mov ah,9
-    ;int 21h
+    lea bx,matrix
+    lea dx,string_i
+    mov cx,num_of_str
+    input_cycle:
+        push cx
+        push bx
+        mov di,dx ;di to the begining of the string
+        mov [di],max_length ;max_length in the first byte
+        mov ah,0Ah  ;input
+        int 21h
+        inc di
+        inc di
+        mov cx,num_of_col 
+        call matrix_string_input
+        print_c 10
+        print_c 13
+        selection_sort bx num_of_col
+        pop bx
+        add bx,num_of_col
+        add bx,num_of_col
+        pop cx
+    loop input_cycle
+    print_c 10
+    print_c 13
+    lea dx,sorted_str
+    mov ah,09h
+    int 21h
+    lea bx,matrix
+    lea dx,string_i
+    mov cx,num_of_str
+    output_cycle:
+        push cx
+        mov cx,num_of_col
+        call matrix_string_output
+        add bx,num_of_col
+        add bx,num_of_col
+        pop cx
+    loop output_cycle
     terminate:
-end start
+end start far
 
